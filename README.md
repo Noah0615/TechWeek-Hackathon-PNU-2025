@@ -4,8 +4,6 @@
 **Career Navigator**는 사용자의 이력서를 AI로 심층 분석하여, 목표 직무와의 적합도를 진단하고 개인 맞춤형 커리어 성장 로드맵을 제공하는 웹 애플리케이션입니다.  
 본 프로젝트는 **TechWeek Hackathon PNU 2025** 출품작입니다.
 
-![Career Navigator Demo](https://i.imgur.com/example.png)
-
 ---
 
 ## ✨ 주요 기능 (Features)
