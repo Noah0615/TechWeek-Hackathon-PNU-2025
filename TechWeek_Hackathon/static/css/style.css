@@ -156,6 +156,7 @@ button:hover {
 .fa-triangle-exclamation { color: #ffc107; }
 .fa-bullseye { color: #17a2b8; }
 .fa-star { color: #6f42c1; }
+.fa-map { color: #28a745; }
 
 .feedback-content ul {
     list-style-type: none;
@@ -232,4 +233,16 @@ button:hover {
 .error-card p {
     color: #d93025;
     margin: 0;
+}
+
+.roadmap-content h3 {
+    font-size: 18px;
+    color: #28a745;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.roadmap-content ul {
+    list-style-type: disc;
+    padding-left: 20px;
 }

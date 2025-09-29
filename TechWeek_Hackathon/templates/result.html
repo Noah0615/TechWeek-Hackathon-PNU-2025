@@ -64,6 +64,15 @@
                     {{ career_advice_html | safe }}
                 </div>
             </div>
+
+            {% if career_roadmap_html %}
+            <div class="feedback-card">
+                <h2><i class="fa-solid fa-map"></i> Your Career Roadmap</h2>
+                <div class="feedback-content roadmap-content">
+                    {{ career_roadmap_html | safe }}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Analyze Another Resume</a>

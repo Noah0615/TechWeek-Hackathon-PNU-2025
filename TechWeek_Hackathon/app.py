@@ -63,6 +63,7 @@ Your task:
    - Missing or weak skills the applicant needs (missing_skills)
    - Recommended next steps (recommendations)
    - Career positioning advice (career_positioning)
+5. Generate a detailed, step-by-step career roadmap with sections for "First 1 Month", "Next 3-6 Months", and "1 Year & Beyond".
 
 Output format:
 (1) JSON (for backend processing)
@@ -96,6 +97,14 @@ Output format:
 
 ## 🌟 Career Positioning Advice
 - Practical tips on how to improve resume presentation, storytelling, or role positioning
+
+## 🗺️ Your Career Roadmap
+### **Phase 1: First 1 Month (Immediate Actions)**
+- Concrete first steps...
+### **Phase 2: Next 3-6 Months (Skill Building)**
+- Deeper skill development...
+### **Phase 3: 1 Year & Beyond (Long-term Growth)**
+- Strategic career moves...
 
 '''
     return prompt_template.format(skills_placeholder=required_skills_str)
@@ -145,6 +154,7 @@ async def upload_resume(request: Request, resume: UploadFile = File(...), job_ro
 
         recommendations_html = extract_section("🎯 Recommendations")
         career_advice_html = extract_section("🌟 Career Positioning Advice")
+        career_roadmap_html = extract_section("🗺️ Your Career Roadmap")
 
         # Calculate score for visualizations
         analysis_skills = analysis_data.get('analysis', {})
@@ -162,7 +172,8 @@ async def upload_resume(request: Request, resume: UploadFile = File(...), job_ro
             "matched_skills": matched_skills,
             "missing_skills": missing_skills,
             "recommendations_html": recommendations_html,
-            "career_advice_html": career_advice_html
+            "career_advice_html": career_advice_html,
+            "career_roadmap_html": career_roadmap_html
         })
 
     except Exception as e:
