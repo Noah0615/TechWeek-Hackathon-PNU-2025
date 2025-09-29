@@ -54,13 +54,13 @@ pip install -r requirements.txt
 * 프로젝트 루트 디렉토리(`TechWeek_Hackathon`)에 `.env` 파일 생성 후, DeepSeek에서 발급받은 API 키 입력:
 
 ```env
-DEEPSEEK_API_KEY="여기에_발급받은_API_키를_붙여넣으세요"
+export GEMINI_API_KEY="여기에_발급받은_API_키를_붙여넣으세요"
 ```
 
 ### 4. 서버 실행
 
 ```bash
-uvicorn app:app --reload
+python app.py or python3 app.py
 ```
 
 * 실행 후, 웹 브라우저에서 [http://127.0.0.1:8000](http://127.0.0.1:8000) 접속
