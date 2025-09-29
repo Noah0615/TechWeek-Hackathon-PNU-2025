@@ -97,5 +97,5 @@ uvicorn app:app --reload
 This project is created for **TechWeek Hackathon PNU 2025**.
 License terms will be updated after the hackathon.
 
-```
+
 
