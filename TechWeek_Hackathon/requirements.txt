@@ -5,3 +5,5 @@ jinja2
 pandas
 google-generativeai
 markdown-it-py
+Pillow
+folium
