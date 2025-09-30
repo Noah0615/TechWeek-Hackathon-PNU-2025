@@ -9,7 +9,7 @@
 </div>
 
 <div class="content-section">
-    <form action="/upload" method="post" enctype="multipart/form-data">
+    <form action="/upload" method="post" enctype="multipart/form-data" id="upload-form">
         <div class="form-group">
             <label for="resume">Upload Resume Image:</label>
             <input type="file" id="resume" name="resume" accept="image/*" required>
@@ -30,4 +30,14 @@
         </div>
     </form>
 </div>
+
+<script>
+    document.getElementById('upload-form').addEventListener('submit', function() {
+        const jobRole = document.getElementById('job_role').value;
+        const resumeFile = document.getElementById('resume').files.length > 0;
+        if (jobRole && resumeFile) {
+            showLoader('We are evaluating your resume...');
+        }
+    });
+</script>
 {% endblock %}

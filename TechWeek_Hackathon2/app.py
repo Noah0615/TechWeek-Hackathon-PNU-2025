@@ -11,6 +11,8 @@ from PIL import Image
 import io
 import json
 from markdown_it import MarkdownIt
+import asyncio
+from career_recommender import recommend_careers
 
 app = FastAPI()
 
@@ -100,6 +102,48 @@ Output format:
 '''
     return prompt_template.format(skills_placeholder=required_skills_str)
 
+# In app.py, REPLACE the old get_general_suggestions function with this one.
+
+async def get_general_suggestions(resume_text: str) -> list:
+    """
+    Generates practical, well-aligned career suggestions from the general job market
+    based on the user's raw resume text.
+    """
+    try:
+        if not resume_text: return []
+        model = genai.GenerativeModel('gemini-2.5-pro')
+        
+        # --- PROMPT MODIFICATION ---
+        # The new prompt tells the AI to find direct matches, not creative ideas.
+        prompt = f"""
+        You are an expert career advisor and recruiter. Analyze the following resume text in detail.
+        
+        Based on the skills, experience, and qualifications presented, suggest 3 specific job titles that are a strong and direct match for this person's profile. 
+        
+        Do NOT suggest creative or "out-of-the-box" ideas. Focus only on practical, well-aligned career paths.
+        
+        For each suggestion, provide a "title", a short "description" of the role, and a "fit" explaining exactly why the candidate's resume is a good match for that specific role.
+
+        RESUME TEXT:
+        ---
+        {resume_text}
+        ---
+        """
+        
+        response = await model.generate_content_async(prompt)
+        suggestions = []
+        for part in response.text.split("\n\n"):
+            lines = part.strip().split('\n')
+            if len(lines) >= 3:
+                title = lines[0].replace("**", "").strip()
+                desc = lines[1].replace("Description:", "").strip()
+                fit = '\n'.join(lines[2:]).replace("Why it fits:", "").replace("Fit:", "").strip()
+                suggestions.append({"title": title, "description": desc, "fit": fit})
+        return suggestions
+    except Exception as e:
+        print(f"Error in get_general_suggestions: {e}")
+        return []
+
 # --- API Endpoints ---
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -120,7 +164,7 @@ async def upload_resume(request: Request, resume: UploadFile = File(...), job_ro
     
     try:
         print("Analyzing resume for job role:", job_role)
-        model = genai.GenerativeModel('models/gemini-pro-latest')
+        model = genai.GenerativeModel('gemini-2.5-pro')
         prompt = get_prompt(job_role)
         image_bytes = await resume.read()
         resume_image = Image.open(io.BytesIO(image_bytes))
@@ -181,7 +225,8 @@ async def upload_resume(request: Request, resume: UploadFile = File(...), job_ro
 
 @app.get("/career_roadmap", response_class=HTMLResponse)
 async def career_roadmap_get(request: Request):
-    return templates.TemplateResponse("career_roadmap.html", {"request": request, "roadmap": None})
+    job_roles = get_job_roles()
+    return templates.TemplateResponse("career_roadmap.html", {"request": request, "roadmap": None, "job_roles": job_roles})
 
 @app.post("/career_roadmap", response_class=HTMLResponse)
 async def career_roadmap_post(request: Request, current_job: str = Form(...)):
@@ -191,7 +236,7 @@ async def career_roadmap_post(request: Request, current_job: str = Form(...)):
 
     try:
         print(f"--- Generating roadmap for: {current_job} ---")
-        model = genai.GenerativeModel('models/gemini-pro-latest')
+        model = genai.GenerativeModel('gemini-2.5-pro')
         prompt = f"Generate a detailed career roadmap for a '{current_job}'. Provide the output as a single line of text, with each job and duration separated by a '|' character. For example: Junior Software Engineer (0-3 years) | Software Engineer (3-5 years) | Senior Software Engineer (5+ years)"
         print(f"Prompt: {prompt}")
         response = await model.generate_content_async(prompt)
@@ -230,48 +275,30 @@ async def global_career_map(request: Request):
     return templates.TemplateResponse("global_career_map.html", {"request": request})
 
 @app.get("/suggested_career", response_class=HTMLResponse)
-async def suggested_career_get(request: Request):
-    return templates.TemplateResponse("suggested_career.html", {"request": request, "suggestions": None})
+async def suggested_career_page(request: Request):
+    """Serves the career suggestions page in its initial loading state."""
+    return templates.TemplateResponse("suggested_career.html", {"request": request})
 
-@app.post("/suggested_career", response_class=HTMLResponse)
-async def suggested_career_post(request: Request, analysis_data: str = Form(...)):
-    """Generates career suggestions based on resume analysis."""
-    if not API_KEY:
-        return templates.TemplateResponse("error.html", {"request": request, "message": "GEMINI_API_KEY not set."})
-
+@app.post("/api/generate_suggestions")
+async def api_generate_suggestions(request: Request):
+    """API endpoint that receives resume TEXT and returns career suggestions as JSON."""
     try:
-        analysis = json.loads(analysis_data)
-        skills = analysis.get("summary", {}).get("skills", [])
-        experience = analysis.get("summary", {}).get("experience", [])
+        data = await request.json()
+        resume_text = data.get("resume_text")
+        if not resume_text:
+            return JSONResponse(status_code=400, content={"error": "Resume text is missing."})
 
-        if not skills and not experience:
-            return templates.TemplateResponse("suggested_career.html", {"request": request, "suggestions": []})
-
-        print("Generating career suggestions for skills:", skills, "and experience:", experience)
-        model = genai.GenerativeModel('models/gemini-pro-latest')
-        prompt = f"Based on the following skills: {skills} and experience: {experience}, suggest 3 alternative career paths. For each path, provide a job title, a brief description, and why it might be a good fit."
+        # Run both recommendation tasks at the same time for speed
+        dataset_task = recommend_careers(resume_text)
+        general_task = get_general_suggestions(resume_text)
+        dataset_results, general_results = await asyncio.gather(dataset_task, general_task)
         
-        response = await model.generate_content_async(prompt)
-        suggestions_text = response.text
-        print("Suggestions generated:", suggestions_text)
-
-        # Basic parsing of the response
-        suggestions = []
-        for suggestion_part in suggestions_text.split("\n\n"):
-            lines = suggestion_part.strip().split('\n')
-            if len(lines) >= 3:
-                title = lines[0].replace("**", "").strip()
-                description = lines[1].strip()
-                fit = '\n'.join(lines[2:]).strip()
-                suggestions.append({"title": title, "description": description, "fit": fit})
-
-        print("Suggestions parsed:", suggestions)
-
-        return templates.TemplateResponse("suggested_career.html", {"request": request, "suggestions": suggestions})
-
+        return JSONResponse(content={
+            "dataset_recommendations": dataset_results,
+            "general_suggestions": general_results
+        })
     except Exception as e:
-        print(f"An error occurred: {e}")
-        return templates.TemplateResponse("error.html", {"request": request, "message": f"Error: {e}"})
+        return JSONResponse(status_code=500, content={"error": "Failed to generate suggestions"})
 
 
 if __name__ == "__main__":

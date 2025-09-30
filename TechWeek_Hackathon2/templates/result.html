@@ -173,4 +173,21 @@
             }
         });
     </script>
+    
+    <div class="content-section text-center mt-4">
+    <a href="/suggested_career" class="btn btn-success btn-lg">
+        <i class="fas fa-lightbulb"></i> Generate Career Suggestions
+    </a>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const analysisDataForStorage = {{ analysis_data | tojson }};
+        if (analysisDataForStorage && analysisDataForStorage.resume_text) {
+            // Save just the resume text to the browser's session storage
+            sessionStorage.setItem('resumeTextForSuggestions', analysisDataForStorage.resume_text);
+        }
+    });
+</script>
+
 {% endblock %}

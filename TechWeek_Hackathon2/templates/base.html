@@ -8,15 +8,31 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 </head>
 
 <body>
+    <div id="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p id="loading-message"></p>
+    </div>
+
     {% include 'navigation.html' %}
     
     <main class="container">
         {% block content %}{% endblock %}
     </main>
-    
+
+    <script>
+        function showLoader(message) {
+            document.getElementById('loading-message').innerText = message;
+            document.getElementById('loading-overlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+    </script>
 </body>
 
 </html>

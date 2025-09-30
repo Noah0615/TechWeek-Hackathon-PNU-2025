@@ -1,37 +1,160 @@
 {% extends "base.html" %}
 
-{% block title %}Suggested Careers{% endblock %}
+{% block title %}Career Suggestions{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Suggested Career Paths</h1>
-    <p>Based on your resume, here are some career paths you might be well-suited for.</p>
+    <h1>Career Suggestions</h1>
+    <p>Personalized career paths based on your resume analysis.</p>
 </div>
 
-<div class="content-section">
-    {% if suggestions %}
-        <div class="row">
-            {% for suggestion in suggestions %}
-            <div class="col-md-4 mb-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h3>{{ suggestion.title }}</h3>
-                        <p>{{ suggestion.description }}</p>
-                        <hr>
-                        <p><strong>Why it fits:</strong> {{ suggestion.fit }}</p>
-                    </div>
+<div id="suggestion-content">
+    
+    <div id="initial-view" class="text-center content-section">
+        <div class="card">
+            <p>Click the button below to generate career recommendations based on your last analyzed resume.</p>
+            <button id="generate-btn" class="btn btn-success btn-lg">Generate Recommendations</button>
+        </div>
+    </div>
+
+    <div id="results-view" style="display: none;">
+        <div class="viz-section">
+            <div class="viz-card">
+                <h3>Top Dataset Matches</h3>
+                <p>Match scores for the top recommendations from our job dataset.</p>
+                <div class="chart-container">
+                    <canvas id="matchScoreChart"></canvas>
                 </div>
             </div>
-            {% endfor %}
         </div>
-    {% elif suggestions is not none and suggestions|length == 0 %}
-        <div class="card text-center">
-            <p>We couldn't generate career suggestions based on the provided resume. Please try with a different resume.</p>
-        </div>
-    {% endif %}
 
-    <div class="text-center mt-5">
-        <a href="/" class="btn">Analyze Another Resume</a>
+        <div id="recommendations-container" class="content-section">
+            </div>
     </div>
 </div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const initialView = document.getElementById('initial-view');
+        const resultsView = document.getElementById('results-view');
+        const generateBtn = document.getElementById('generate-btn');
+
+        const fetchAndDisplayResults = async () => {
+            const resumeText = sessionStorage.getItem('resumeTextForSuggestions');
+            if (!resumeText) {
+                initialView.innerHTML = '<div class="card text-center"><p class="text-danger">Could not find resume data. Please <a href="/upload_page">analyze a resume</a> first.</p></div>';
+                return;
+            }
+
+            initialView.style.display = 'none';
+            resultsView.style.display = 'none';
+            showLoader('Generating your personalized recommendations...');
+
+            try {
+                const response = await fetch('/api/generate_suggestions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ resume_text: resumeText })
+                });
+
+                if (!response.ok) throw new Error('API response error');
+                const data = await response.json();
+
+                renderVisualizations(data);
+                renderRecommendations(data);
+
+                hideLoader();
+                resultsView.style.display = 'block';
+
+            } catch (error) {
+                console.error('Error fetching recommendations:', error);
+                hideLoader();
+                resultsView.innerHTML = '<div class="card text-center"><p class="text-danger">An error occurred. Please try again.</p></div>';
+                resultsView.style.display = 'block';
+            }
+        };
+
+        const renderVisualizations = (data) => {
+            // 1. Bar Chart for Match Scores
+            const ctx = document.getElementById('matchScoreChart').getContext('2d');
+            const datasetRecs = data.dataset_recommendations || [];
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: datasetRecs.map(r => r.job_title),
+                    datasets: [{
+                        label: 'Match Score',
+                        data: datasetRecs.map(r => r.match_score),
+                        backgroundColor: ['#667eea', '#7f9cf5', '#a3bffa'],
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                    scales: { x: { beginAtZero: true, max: 100, grid: { display: false } }, y: { grid: { display: false } } },
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'end',
+                            formatter: (value) => value + '%',
+                            color: '#333',
+                            font: { weight: 'bold' }
+                        }
+                    }
+                }
+            });
+
+
+        };
+        
+        const renderRecommendations = (data) => {
+            const container = document.getElementById('recommendations-container');
+            let html = '';
+
+            // Card for Dataset Recommendations
+            if (data.dataset_recommendations && data.dataset_recommendations.length > 0) {
+                html += `
+                    <div class="feedback-card">
+                        <h2><i class="fa-solid fa-bullseye"></i> Top Matches from Job Dataset</h2>
+                        <div class="card-grid">`;
+                data.dataset_recommendations.forEach(rec => {
+                    html += `
+                        <div class="rec-card">
+                            <h5>${rec.job_title} (${rec.match_score}%)</h5>
+                            <p>${rec.justification}</p>
+                        </div>`;
+                });
+                html += `</div></div>`;
+            }
+
+            // Card for General Suggestions
+            if (data.general_suggestions && data.general_suggestions.length > 0) {
+                html += `
+                    <div class="feedback-card">
+                        <h2><i class="fa-solid fa-star"></i> Alternative Career Ideas</h2>
+                        <div class="card-grid">`;
+                data.general_suggestions.forEach(sug => {
+                    html += `
+                        <div class="rec-card">
+                            <h5>${sug.title}</h5>
+                            <p>${sug.description}</p>
+                            <hr>
+                            <p><strong>Why it fits:</strong> ${sug.fit}</p>
+                        </div>`;
+                });
+                html += `</div></div>`;
+            }
+            
+            if (html === '') {
+                html = '<div class="feedback-card"><p>No recommendations could be generated for this resume.</p></div>';
+            }
+
+            container.innerHTML = html;
+        };
+
+        generateBtn.addEventListener('click', fetchAndDisplayResults);
+    });
+</script>
 {% endblock %}

@@ -5,15 +5,20 @@
 {% block content %}
 <div class="page-header">
     <h1>Build Your Career Roadmap</h1>
-    <p>Enter your current role to generate a potential career trajectory.</p>
+    <p>Select your current role to generate a potential career trajectory.</p>
 </div>
 
 <div class="content-section">
     <div class="card">
-        <form action="/career_roadmap" method="post">
+        <form action="/career_roadmap" method="post" id="roadmap-form">
             <div class="form-group">
-                <label for="current_job">Enter Your Current Job Role</label>
-                <input type="text" id="current_job" name="current_job" value="{{ current_job if current_job }}" placeholder="e.g., Software Engineer" required>
+                <label for="current_job">Select Your Current Job Role</label>
+                <select id="current_job" name="current_job" required>
+                    <option value="" disabled {% if not current_job %}selected{% endif %}>-- Select a Job Role --</option>
+                    {% for role in job_roles %}
+                    <option value="{{ role }}" {% if role == current_job %}selected{% endif %}>{{ role }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="text-center">
                 <button type="submit">Generate Roadmap</button>
@@ -23,7 +28,7 @@
 
     {% if roadmap %}
     <div class="mt-5">
-        <h2>Your Generated Career Roadmap</h2>
+        <h2>Your Generated Career Roadmap for a {{ current_job }}</h2>
         <div class="roadmap-container">
             {% for step in roadmap %}
             <div class="roadmap-step">
@@ -43,4 +48,13 @@
         </div>
     {% endif %}
 </div>
+
+<script>
+    document.getElementById('roadmap-form').addEventListener('submit', function() {
+        const jobRole = document.getElementById('current_job').value;
+        if (jobRole) {
+            showLoader(`Generating a roadmap for a ${jobRole}...`);
+        }
+    });
+</script>
 {% endblock %}
