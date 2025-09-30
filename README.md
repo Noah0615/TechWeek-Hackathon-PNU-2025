@@ -78,8 +78,8 @@ python app.py
 
 - **전재원** — Match %
 - **소피** — Suggested Career
-- **Nyi Niy Htun** — Global Career Map
-- **Hanwae Nyein** — Career Roadmap
+- **Nyi Nyi Htun** — Global Career Map
+- **Han Nwae Nyein** — Career Roadmap
 
 ---
 
