@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Career Roadmap{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Build Your Career Roadmap</h1>
+    <p>Enter your current role to generate a potential career trajectory.</p>
+</div>
+
+<div class="content-section">
+    <div class="card">
+        <form action="/career_roadmap" method="post">
+            <div class="form-group">
+                <label for="current_job">Enter Your Current Job Role</label>
+                <input type="text" id="current_job" name="current_job" value="{{ current_job if current_job }}" placeholder="e.g., Software Engineer" required>
+            </div>
+            <div class="text-center">
+                <button type="submit">Generate Roadmap</button>
+            </div>
+        </form>
+    </div>
+
+    {% if roadmap %}
+    <div class="mt-5">
+        <h2>Your Generated Career Roadmap</h2>
+        <div class="roadmap-container">
+            {% for step in roadmap %}
+            <div class="roadmap-step">
+                <div class="details">
+                    <h3>{{ step.job }}</h3>
+                    {% if step.duration %}
+                    <p><strong>Typical Duration:</strong> {{ step.duration }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% elif request.method == 'POST' %}
+        <div class="card text-center mt-5">
+             <p>Could not generate a roadmap for the specified role. Please try a different job title.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

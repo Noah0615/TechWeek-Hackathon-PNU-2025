@@ -63,7 +63,6 @@ Your task:
    - Missing or weak skills the applicant needs (missing_skills)
    - Recommended next steps (recommendations)
    - Career positioning advice (career_positioning)
-5. Generate a detailed, step-by-step career roadmap with sections for "First 1 Month", "Next 3-6 Months", and "1 Year & Beyond".
 
 Output format:
 (1) JSON (for backend processing)
@@ -98,20 +97,17 @@ Output format:
 ## 🌟 Career Positioning Advice
 - Practical tips on how to improve resume presentation, storytelling, or role positioning
 
-## 🗺️ Your Career Roadmap
-### **Phase 1: First 1 Month (Immediate Actions)**
-- Concrete first steps...
-### **Phase 2: Next 3-6 Months (Skill Building)**
-- Deeper skill development...
-### **Phase 3: 1 Year & Beyond (Long-term Growth)**
-- Strategic career moves...
-
 '''
     return prompt_template.format(skills_placeholder=required_skills_str)
 
 # --- API Endpoints ---
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
+    """Serves the home page."""
+    return templates.TemplateResponse("home.html", {"request": request})
+
+@app.get("/upload_page", response_class=HTMLResponse)
+async def upload_page(request: Request):
     """Serves the main page with job roles."""
     job_roles = get_job_roles()
     return templates.TemplateResponse("index.html", {"request": request, "job_roles": job_roles})
@@ -123,13 +119,15 @@ async def upload_resume(request: Request, resume: UploadFile = File(...), job_ro
         return templates.TemplateResponse("error.html", {"request": request, "message": "GEMINI_API_KEY environment variable not set."})
     
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        print("Analyzing resume for job role:", job_role)
+        model = genai.GenerativeModel('models/gemini-pro-latest')
         prompt = get_prompt(job_role)
         image_bytes = await resume.read()
         resume_image = Image.open(io.BytesIO(image_bytes))
 
-        response = model.generate_content([prompt, resume_image])
+        response = await model.generate_content_async([prompt, resume_image])
         text_response = response.text
+        print("Analysis generated:", text_response)
 
         # --- Enhanced Parsing Logic ---
         json_part_str = "{}"
@@ -140,6 +138,7 @@ async def upload_resume(request: Request, resume: UploadFile = File(...), job_ro
         except Exception as e:
             print(f"JSON parsing regex failed: {e}")
         analysis_data = json.loads(json_part_str)
+        print("Analysis data parsed:", analysis_data)
 
         def extract_section(header):
             try:
@@ -154,7 +153,6 @@ async def upload_resume(request: Request, resume: UploadFile = File(...), job_ro
 
         recommendations_html = extract_section("🎯 Recommendations")
         career_advice_html = extract_section("🌟 Career Positioning Advice")
-        career_roadmap_html = extract_section("🗺️ Your Career Roadmap")
 
         # Calculate score for visualizations
         analysis_skills = analysis_data.get('analysis', {})
@@ -164,6 +162,7 @@ async def upload_resume(request: Request, resume: UploadFile = File(...), job_ro
         missing_count = len(missing_skills)
         total_skills = matched_count + missing_count
         score = (matched_count / total_skills) * 100 if total_skills > 0 else 0
+        print("Score calculated:", score)
 
         return templates.TemplateResponse("result.html", {
             "request": request, 
@@ -173,12 +172,107 @@ async def upload_resume(request: Request, resume: UploadFile = File(...), job_ro
             "missing_skills": missing_skills,
             "recommendations_html": recommendations_html,
             "career_advice_html": career_advice_html,
-            "career_roadmap_html": career_roadmap_html
+            "analysis_data": analysis_data
         })
 
     except Exception as e:
         print(f"An error occurred: {e}")
         return templates.TemplateResponse("error.html", {"request": request, "message": f"An error occurred during analysis: {e}"})
+
+@app.get("/career_roadmap", response_class=HTMLResponse)
+async def career_roadmap_get(request: Request):
+    return templates.TemplateResponse("career_roadmap.html", {"request": request, "roadmap": None})
+
+@app.post("/career_roadmap", response_class=HTMLResponse)
+async def career_roadmap_post(request: Request, current_job: str = Form(...)):
+    """Generates and parses a career roadmap using the Gemini API."""
+    if not API_KEY:
+        return templates.TemplateResponse("error.html", {"request": request, "message": "GEMINI_API_KEY environment variable not set."})
+
+    try:
+        print(f"--- Generating roadmap for: {current_job} ---")
+        model = genai.GenerativeModel('models/gemini-pro-latest')
+        prompt = f"Generate a detailed career roadmap for a '{current_job}'. Provide the output as a single line of text, with each job and duration separated by a '|' character. For example: Junior Software Engineer (0-3 years) | Software Engineer (3-5 years) | Senior Software Engineer (5+ years)"
+        print(f"Prompt: {prompt}")
+        response = await model.generate_content_async(prompt)
+        roadmap_text = response.text
+        print(f"Roadmap generated (raw text): {roadmap_text}")
+
+        # Parse the roadmap
+        if '|' in roadmap_text:
+            roadmap_parts = roadmap_text.split('|')
+        else:
+            roadmap_parts = re.split(r'→', roadmap_text)
+
+        parsed_roadmap = []
+        for part in roadmap_parts:
+            part = part.strip()
+            match = re.match(r'(.*?)\s*\((.*?)\)$', part)
+            if match:
+                job_title = match.group(1).strip()
+                duration = match.group(2).strip()
+                parsed_roadmap.append({"job": job_title, "duration": duration})
+            else:
+                # Handle cases where there is no duration
+                parsed_roadmap.append({"job": part, "duration": None})
+        
+        print(f"Roadmap parsed: {parsed_roadmap}")
+        print("--- Roadmap generation complete ---")
+
+        return templates.TemplateResponse("career_roadmap.html", {"request": request, "roadmap": parsed_roadmap, "current_job": current_job})
+
+    except Exception as e:
+        print(f"An error occurred during roadmap generation: {e}")
+        return templates.TemplateResponse("error.html", {"request": request, "message": f"An error occurred during roadmap generation: {e}"})
+
+@app.get("/global_career_map", response_class=HTMLResponse)
+async def global_career_map(request: Request):
+    return templates.TemplateResponse("global_career_map.html", {"request": request})
+
+@app.get("/suggested_career", response_class=HTMLResponse)
+async def suggested_career_get(request: Request):
+    return templates.TemplateResponse("suggested_career.html", {"request": request, "suggestions": None})
+
+@app.post("/suggested_career", response_class=HTMLResponse)
+async def suggested_career_post(request: Request, analysis_data: str = Form(...)):
+    """Generates career suggestions based on resume analysis."""
+    if not API_KEY:
+        return templates.TemplateResponse("error.html", {"request": request, "message": "GEMINI_API_KEY not set."})
+
+    try:
+        analysis = json.loads(analysis_data)
+        skills = analysis.get("summary", {}).get("skills", [])
+        experience = analysis.get("summary", {}).get("experience", [])
+
+        if not skills and not experience:
+            return templates.TemplateResponse("suggested_career.html", {"request": request, "suggestions": []})
+
+        print("Generating career suggestions for skills:", skills, "and experience:", experience)
+        model = genai.GenerativeModel('models/gemini-pro-latest')
+        prompt = f"Based on the following skills: {skills} and experience: {experience}, suggest 3 alternative career paths. For each path, provide a job title, a brief description, and why it might be a good fit."
+        
+        response = await model.generate_content_async(prompt)
+        suggestions_text = response.text
+        print("Suggestions generated:", suggestions_text)
+
+        # Basic parsing of the response
+        suggestions = []
+        for suggestion_part in suggestions_text.split("\n\n"):
+            lines = suggestion_part.strip().split('\n')
+            if len(lines) >= 3:
+                title = lines[0].replace("**", "").strip()
+                description = lines[1].strip()
+                fit = '\n'.join(lines[2:]).strip()
+                suggestions.append({"title": title, "description": description, "fit": fit})
+
+        print("Suggestions parsed:", suggestions)
+
+        return templates.TemplateResponse("suggested_career.html", {"request": request, "suggestions": suggestions})
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return templates.TemplateResponse("error.html", {"request": request, "message": f"Error: {e}"})
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

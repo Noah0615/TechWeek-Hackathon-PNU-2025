@@ -1,34 +1,33 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resume Analyzer</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <h1>Resume Analyzer</h1>
-        <p>Upload your resume image and select a job role to get feedback.</p>
+{% extends "base.html" %}
+
+{% block title %}Resume Analyzer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Resume Analyzer</h1>
+    <p>Upload your resume image and select a job role to get feedback.</p>
+</div>
+
+<div class="content-section">
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="resume">Upload Resume Image:</label>
+            <input type="file" id="resume" name="resume" accept="image/*" required>
+        </div>
         
-        <form action="/upload" method="post" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="resume">Upload Resume Image:</label>
-                <input type="file" id="resume" name="resume" accept="image/*" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="job_role">Select Job Role:</label>
-                <select id="job_role" name="job_role" required>
-                    <option value="" disabled selected>--Please choose a job role--</option>
-                    {% for role in job_roles %}
-                    <option value="{{ role }}">{{ role }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
+        <div class="form-group">
+            <label for="job_role">Select Job Role:</label>
+            <select id="job_role" name="job_role" required>
+                <option value="" disabled selected>--Please choose a job role--</option>
+                {% for role in job_roles %}
+                <option value="{{ role }}">{{ role }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="text-center">
             <button type="submit">Analyze</button>
-        </form>
-    </div>
-</body>
-</html>
+        </div>
+    </form>
+</div>
+{% endblock %}
