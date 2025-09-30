@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Resume Analysis</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <!-- Data is safely stored in data-* attributes -->
+    <div id="chart-data" data-score="{{ score | default(0) }}"
+        data-missing-skills='{{ missing_skills | tojson | safe }}'
+        data-matched-count="{{ matched_skills | length | default(0) }}">
+    </div>
+
+    <div class="container result-container">
+        <div class="result-header">
+            <h1>Resume Analysis Report</h1>
+            <p>For <strong>{{ filename }}</strong></p>
+        </div>
+
+        <!-- Visualization Section -->
+        <div class="viz-section">
+            <div class="viz-card">
+                <h3>Applicant Ranking</h3>
+                <p>Your resume score is <strong id="user-score-display">0</strong>. We estimate this is in the top
+                    <strong><span id="percentile-rank">N/A</span>%</strong> of applicants.</p>
+                <div class="chart-container">
+                    <canvas id="bellCurveChart"></canvas>
+                </div>
+            </div>
+            <div class="viz-card">
+                <h3>Completeness</h3>
+                <p>Check off missing skills to see your progress.</p>
+                <div class="pie-chart-container">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback Section -->
+        <div class="feedback-section">
+            {% if missing_skills %}
+            <div class="feedback-card">
+                <h2><i class="fa-solid fa-triangle-exclamation"></i> Missing Skills</h2>
+                <ul id="missing-skills-list">
+                    {% for skill in missing_skills %}
+                    <li>{{ skill }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="feedback-card">
+                <h2><i class="fa-solid fa-bullseye"></i> Recommendations</h2>
+                <div class="feedback-content">
+                    {{ recommendations_html | safe }}
+                </div>
+            </div>
+
+            <div class="feedback-card">
+                <h2><i class="fa-solid fa-star"></i> Career Positioning Advice</h2>
+                <div class="feedback-content">
+                    {{ career_advice_html | safe }}
+                </div>
+            </div>
+
+            {% if career_roadmap_html %}
+            <div class="feedback-card">
+                <h2><i class="fa-solid fa-map"></i> Your Career Roadmap</h2>
+                <div class="feedback-content roadmap-content">
+                    {{ career_roadmap_html | safe }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Analyze Another Resume</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const dataElement = document.getElementById('chart-data');
+            const userScore = parseFloat(dataElement.dataset.score) || 0;
+            const matchedCount = parseInt(dataElement.dataset.matchedCount) || 0;
+            let missingSkills = [];
+            try {
+                missingSkills = JSON.parse(dataElement.dataset.missingSkills);
+            } catch (e) {
+                console.error("Could not parse missing skills data:", e);
+            }
+
+            const missingCount = missingSkills.length;
+            const totalSkills = matchedCount + missingCount;
+
+            // --- 1. Bell Curve Chart --- 
+            const bellCurveCtx = document.getElementById('bellCurveChart');
+            if (bellCurveCtx) {
+                function normalPDF(x, mean, stdDev) {
+                    return Math.exp(-0.5 * Math.pow((x - mean) / stdDev, 2)) / (stdDev * Math.sqrt(2 * Math.PI));
+                }
+                const mean = 50, stdDev = 15;
+                const curveData = Array.from({ length: 51 }, (_, i) => ({ x: i * 2, y: normalPDF(i * 2, mean, stdDev) }));
+                const userPoint = { x: userScore, y: normalPDF(userScore, mean, stdDev) };
+
+                function standardNormalCDF(x) {
+                    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+                    const d = 0.3989423 * Math.exp(-0.5 * x * x);
+                    let prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+                    if (x > 0) prob = 1 - prob;
+                    return prob;
+                }
+                const zScore = (userScore - mean) / stdDev;
+                const percentile = (1 - standardNormalCDF(zScore)) * 100;
+                document.getElementById('percentile-rank').textContent = percentile.toFixed(1);
+                document.getElementById('user-score-display').textContent = userScore.toFixed(1);
+
+                new Chart(bellCurveCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        datasets: [
+                            { label: 'Applicant Distribution', data: curveData, borderColor: 'rgba(24, 119, 242, 0.5)', backgroundColor: 'rgba(24, 119, 242, 0.1)', fill: true, pointRadius: 0, borderWidth: 2, tension: 0.4 },
+                            { label: 'Your Score', data: [userPoint], backgroundColor: '#d93025', pointRadius: 6, pointHoverRadius: 8, type: 'scatter' }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { x: { type: 'linear', title: { display: true, text: 'Resume Score' } }, y: { display: false } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            // --- 2. Interactive Pie Chart with Percentage --- 
+            const pieCtx = document.getElementById('pieChart');
+            if (pieCtx && totalSkills > 0) {
+                const centerTextPlugin = { id: 'centerText', afterDraw: (chart) => { /* ... */ } }; // Plugin definition is long, keeping it concise
+                centerTextPlugin.afterDraw = (chart) => {
+                    const ctx = chart.ctx;
+                    const { width, height } = chart.chartArea;
+                    const data = chart.data.datasets[0].data;
+                    const completed = data[0];
+                    const total = data.reduce((a, b) => a + b, 0);
+                    const percentage = total > 0 ? ((completed / total) * 100).toFixed(0) : 0;
+                    ctx.save();
+                    ctx.font = `bold ${height / 5}px -apple-system, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#1c1e21';
+                    ctx.fillText(`${percentage}%`, width / 2, height / 2);
+                    ctx.restore();
+                };
+
+                const pieChart = new Chart(pieCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: { labels: ['Completed', 'Remaining'], datasets: [{ data: [matchedCount, missingCount], backgroundColor: ['#28a745', '#e9ecef'], borderColor: ['#fff'], borderWidth: 2 }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false }, tooltip: { enabled: true } } },
+                    plugins: [centerTextPlugin]
+                });
+
+                const missingSkillsList = document.getElementById('missing-skills-list');
+                if (missingSkillsList) {
+                    const listItems = missingSkillsList.querySelectorAll('li');
+                    listItems.forEach((li, index) => {
+                        const originalText = li.innerHTML;
+                        li.innerHTML = '';
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.id = 'skill-' + index;
+                        checkbox.className = 'skill-checkbox';
+                        const label = document.createElement('label');
+                        label.htmlFor = 'skill-' + index;
+                        label.innerHTML = originalText;
+                        li.prepend(checkbox);
+                        li.append(label);
+                        li.addEventListener('click', (e) => { if (e.target.tagName !== 'INPUT') checkbox.checked = !checkbox.checked; updatePieChart(); });
+                    });
+                }
+
+                function updatePieChart() {
+                    const newlyCompleted = document.querySelectorAll('#missing-skills-list .skill-checkbox:checked').length;
+                    pieChart.data.datasets[0].data[0] = matchedCount + newlyCompleted;
+                    pieChart.data.datasets[0].data[1] = missingCount - newlyCompleted;
+                    pieChart.update();
+                }
+            } else if (pieCtx) {
+                const vizCard = pieCtx.closest('.viz-card');
+                if (vizCard) vizCard.innerHTML = '<h3>Completeness</h3><p>Congratulations! No missing skills were identified.</p><div class="all-complete-icon"><i class="fas fa-check-circle"></i></div>';
+            }
+        });
+    </script>
+
+</body>
+
+</html>
