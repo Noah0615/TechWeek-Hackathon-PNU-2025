@@ -1,18 +1,11 @@
+{% extends "base.html" %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Resume Analyzer</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {% include 'navigation.html' %}
-    <div class="container">
-        <h1>Welcome to the Resume Analyzer</h1>
-        <p>Your career journey starts here. Our tool helps you understand your strengths and weaknesses, and provides a roadmap for your career.</p>
-        <p>Navigate through the menu to analyze your resume, explore career paths, and more.</p>
-    </div>
-</body>
-</html>
+{% block title %}Welcome to Resume Analyzer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Welcome to the Resume Analyzer</h1>
+    <p>Your career journey starts here. Our tool helps you understand your strengths and weaknesses, and provides a roadmap for your career.</p>
+    <a href="/upload_page" class="btn mt-4">Get Started</a>
+</div>
+{% endblock %}

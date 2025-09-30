@@ -3,43 +3,44 @@
 {% block title %}Career Roadmap{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h1 class="text-center mb-4">Build Your Career Roadmap</h1>
+<div class="page-header">
+    <h1>Build Your Career Roadmap</h1>
+    <p>Enter your current role to generate a potential career trajectory.</p>
+</div>
 
-    <div class="card shadow-sm p-4 mb-5">
+<div class="content-section">
+    <div class="card">
         <form action="/career_roadmap" method="post">
-            <div class="mb-3">
-                <label for="current_job" class="form-label fs-5">Enter Your Current Job Role</label>
-                <input type="text" class="form-control" id="current_job" name="current_job" value="{{ current_job if current_job }}" placeholder="e.g., Software Engineer" required>
+            <div class="form-group">
+                <label for="current_job">Enter Your Current Job Role</label>
+                <input type="text" id="current_job" name="current_job" value="{{ current_job if current_job }}" placeholder="e.g., Software Engineer" required>
             </div>
-            <div class="d-grid">
-                <button type="submit" class="btn btn-primary btn-lg">Generate Roadmap</button>
+            <div class="text-center">
+                <button type="submit">Generate Roadmap</button>
             </div>
         </form>
     </div>
 
     {% if roadmap %}
     <div class="mt-5">
-        <h2 class="text-center mb-4">Your Generated Career Roadmap</h2>
+        <h2>Your Generated Career Roadmap</h2>
         <div class="roadmap-container">
             {% for step in roadmap %}
             <div class="roadmap-step">
-                <div class="icon">➔</div>
                 <div class="details">
                     <h3>{{ step.job }}</h3>
                     {% if step.duration %}
-                    <p><strong>Duration:</strong> {{ step.duration }}</p>
+                    <p><strong>Typical Duration:</strong> {{ step.duration }}</p>
                     {% endif %}
                 </div>
             </div>
             {% endfor %}
         </div>
     </div>
-    {% else %}
-    <div class="mt-5">
-        <h2 class="text-center mb-4">No roadmap generated</h2>
-        <p class="text-center">Please enter a job role and click "Generate Roadmap" to see your career path.</p>
-    </div>
+    {% elif request.method == 'POST' %}
+        <div class="card text-center mt-5">
+             <p>Could not generate a roadmap for the specified role. Please try a different job title.</p>
+        </div>
     {% endif %}
 </div>
 {% endblock %}

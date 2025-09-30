@@ -1,18 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <h1>An Error Occurred</h1>
-        <div class="card error-card">
-            <p>{{ message }}</p>
-        </div>
-        <a href="/" class="back-link">Go back</a>
+{% extends "base.html" %}
+
+{% block title %}Error{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>An Error Occurred</h1>
+</div>
+<div class="content-section">
+    <div class="card text-center">
+        <p>{{ message }}</p>
     </div>
-</body>
-</html>
+    <a href="/" class="btn back-link">Go back</a>
+</div>
+{% endblock %}

@@ -1,84 +1,64 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Resume Analysis</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
+{% block title %}Your Resume Analysis{% endblock %}
 
-<body>
-    <!-- Data is safely stored in data-* attributes -->
-    <div id="chart-data" data-score="{{ score | default(0) }}"
-        data-missing-skills='{{ missing_skills | tojson | safe }}'
-        data-matched-count="{{ matched_skills | length | default(0) }}">
+{% block content %}
+    <div id="chart-data" 
+         data-score="{{ score | round(1) }}" 
+         data-missing-skills='{{ missing_skills | tojson }}' 
+         data-matched-count="{{ matched_skills | length }}">
     </div>
 
-    <div class="container result-container">
-        <div class="result-header">
-            <h1>Resume Analysis Report</h1>
-            <p>For <strong>{{ filename }}</strong></p>
-        </div>
+    <div class="page-header">
+        <h1>Resume Analysis Report</h1>
+        <p>For <strong>{{ filename }}</strong></p>
+    </div>
 
-        <!-- Visualization Section -->
-        <div class="viz-section">
-            <div class="viz-card">
-                <h3>Applicant Ranking</h3>
-                <p>Your resume score is <strong id="user-score-display">0</strong>. We estimate this is in the top
-                    <strong><span id="percentile-rank">N/A</span>%</strong> of applicants.</p>
-                <div class="chart-container">
-                    <canvas id="bellCurveChart"></canvas>
-                </div>
-            </div>
-            <div class="viz-card">
-                <h3>Completeness</h3>
-                <p>Check off missing skills to see your progress.</p>
-                <div class="pie-chart-container">
-                    <canvas id="pieChart"></canvas>
-                </div>
+    <div class="viz-section">
+        <div class="viz-card">
+            <h3>Applicant Ranking</h3>
+            <p>Your resume score is <strong id="user-score-display">0</strong>. We estimate this is in the top
+                <strong><span id="percentile-rank">N/A</span>%</strong> of applicants.
+            </p>
+            <div class="chart-container">
+                <canvas id="bellCurveChart"></canvas>
             </div>
         </div>
-
-        <!-- Feedback Section -->
-        <div class="feedback-section">
-            {% if missing_skills %}
-            <div class="feedback-card">
-                <h2><i class="fa-solid fa-triangle-exclamation"></i> Missing Skills</h2>
-                <ul id="missing-skills-list">
-                    {% for skill in missing_skills %}
-                    <li>{{ skill }}</li>
-                    {% endfor %}
-                </ul>
+        <div class="viz-card">
+            <h3>Completeness</h3>
+            <p>Check off missing skills to see your progress.</p>
+            <div class="pie-chart-container">
+                <canvas id="pieChart"></canvas>
             </div>
-            {% endif %}
+        </div>
+    </div>
 
-            <div class="feedback-card">
-                <h2><i class="fa-solid fa-bullseye"></i> Recommendations</h2>
-                <div class="feedback-content">
-                    {{ recommendations_html | safe }}
-                </div>
-            </div>
-
-            <div class="feedback-card">
-                <h2><i class="fa-solid fa-star"></i> Career Positioning Advice</h2>
-                <div class="feedback-content">
-                    {{ career_advice_html | safe }}
-                </div>
-            </div>
-
-            {% if career_roadmap_html %}
-            <div class="feedback-card">
-                <h2><i class="fa-solid fa-map"></i> Your Career Roadmap</h2>
-                <div class="feedback-content roadmap-content">
-                    {{ career_roadmap_html | safe }}
-                </div>
-            </div>
-            {% endif %}
+    <div class="content-section">
+        <div class="feedback-card">
+            <h2><i class="fa-solid fa-triangle-exclamation"></i> Missing Skills</h2>
+            <ul id="missing-skills-list">
+                {% for skill in missing_skills %}
+                <li>{{ skill }}</li>
+                {% else %}
+                <li>No missing skills identified.</li>
+                {% endfor %}
+            </ul>
         </div>
 
+        <div class="feedback-card">
+            <h2><i class="fa-solid fa-bullseye"></i> Recommendations</h2>
+            <div class="feedback-content">
+                {{ recommendations_html | safe }}
+            </div>
+        </div>
+
+        <div class="feedback-card">
+            <h2><i class="fa-solid fa-star"></i> Career Positioning Advice</h2>
+            <div class="feedback-content">
+                {{ career_advice_html | safe }}
+            </div>
+        </div>
+        
         <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Analyze Another Resume</a>
     </div>
 
@@ -89,7 +69,7 @@
             const matchedCount = parseInt(dataElement.dataset.matchedCount) || 0;
             let missingSkills = [];
             try {
-                missingSkills = JSON.parse(dataElement.dataset.missingSkills);
+                missingSkills = JSON.parse(dataElement.dataset.missingSkills.replace(/'/g, '"'));
             } catch (e) {
                 console.error("Could not parse missing skills data:", e);
             }
@@ -97,7 +77,6 @@
             const missingCount = missingSkills.length;
             const totalSkills = matchedCount + missingCount;
 
-            // --- 1. Bell Curve Chart --- 
             const bellCurveCtx = document.getElementById('bellCurveChart');
             if (bellCurveCtx) {
                 function normalPDF(x, mean, stdDev) {
@@ -123,41 +102,42 @@
                     type: 'line',
                     data: {
                         datasets: [
-                            { label: 'Applicant Distribution', data: curveData, borderColor: 'rgba(24, 119, 242, 0.5)', backgroundColor: 'rgba(24, 119, 242, 0.1)', fill: true, pointRadius: 0, borderWidth: 2, tension: 0.4 },
-                            { label: 'Your Score', data: [userPoint], backgroundColor: '#d93025', pointRadius: 6, pointHoverRadius: 8, type: 'scatter' }
+                            { label: 'Applicant Distribution', data: curveData, borderColor: 'rgba(102, 126, 234, 0.8)', backgroundColor: 'rgba(102, 126, 234, 0.2)', fill: true, pointRadius: 0, borderWidth: 3, tension: 0.4 },
+                            { label: 'Your Score', data: [userPoint], backgroundColor: '#d93025', pointRadius: 8, pointHoverRadius: 10, type: 'scatter' }
                         ]
                     },
                     options: {
                         responsive: true, maintainAspectRatio: false,
-                        scales: { x: { type: 'linear', title: { display: true, text: 'Resume Score' } }, y: { display: false } },
+                        scales: { x: { type: 'linear', title: { display: true, text: 'Resume Score', font: { size: 14, weight: 'bold' } } }, y: { display: false } },
                         plugins: { legend: { display: false } }
                     }
                 });
             }
 
-            // --- 2. Interactive Pie Chart with Percentage --- 
             const pieCtx = document.getElementById('pieChart');
             if (pieCtx && totalSkills > 0) {
-                const centerTextPlugin = { id: 'centerText', afterDraw: (chart) => { /* ... */ } }; // Plugin definition is long, keeping it concise
-                centerTextPlugin.afterDraw = (chart) => {
-                    const ctx = chart.ctx;
-                    const { width, height } = chart.chartArea;
-                    const data = chart.data.datasets[0].data;
-                    const completed = data[0];
-                    const total = data.reduce((a, b) => a + b, 0);
-                    const percentage = total > 0 ? ((completed / total) * 100).toFixed(0) : 0;
-                    ctx.save();
-                    ctx.font = `bold ${height / 5}px -apple-system, sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillStyle = '#1c1e21';
-                    ctx.fillText(`${percentage}%`, width / 2, height / 2);
-                    ctx.restore();
+                const centerTextPlugin = {
+                    id: 'centerText',
+                    afterDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const { width, height } = chart.chartArea;
+                        const data = chart.data.datasets[0].data;
+                        const completed = data[0];
+                        const total = data.reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? ((completed / total) * 100).toFixed(0) : 0;
+                        ctx.save();
+                        ctx.font = `bold ${height / 5}px -apple-system, sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillStyle = '#667eea';
+                        ctx.fillText(`${percentage}%`, width / 2, height / 2);
+                        ctx.restore();
+                    }
                 };
 
                 const pieChart = new Chart(pieCtx.getContext('2d'), {
                     type: 'doughnut',
-                    data: { labels: ['Completed', 'Remaining'], datasets: [{ data: [matchedCount, missingCount], backgroundColor: ['#28a745', '#e9ecef'], borderColor: ['#fff'], borderWidth: 2 }] },
+                    data: { labels: ['Completed', 'Remaining'], datasets: [{ data: [matchedCount, missingCount], backgroundColor: ['#28a745', '#e9ecef'], borderColor: ['#fff'], borderWidth: 3 }] },
                     options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false }, tooltip: { enabled: true } } },
                     plugins: [centerTextPlugin]
                 });
@@ -166,17 +146,17 @@
                 if (missingSkillsList) {
                     const listItems = missingSkillsList.querySelectorAll('li');
                     listItems.forEach((li, index) => {
-                        const originalText = li.innerHTML;
-                        li.innerHTML = '';
+                        const originalText = li.textContent;
+                        li.innerHTML = ''; // Clear the content
                         const checkbox = document.createElement('input');
                         checkbox.type = 'checkbox';
                         checkbox.id = 'skill-' + index;
                         checkbox.className = 'skill-checkbox';
                         const label = document.createElement('label');
                         label.htmlFor = 'skill-' + index;
-                        label.innerHTML = originalText;
-                        li.prepend(checkbox);
-                        li.append(label);
+                        label.textContent = originalText;
+                        li.appendChild(checkbox);
+                        li.appendChild(label);
                         li.addEventListener('click', (e) => { if (e.target.tagName !== 'INPUT') checkbox.checked = !checkbox.checked; updatePieChart(); });
                     });
                 }
@@ -193,7 +173,4 @@
             }
         });
     </script>
-
-</body>
-
-</html>
+{% endblock %}
